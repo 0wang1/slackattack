@@ -57,6 +57,9 @@ controller.setupWebserver(process.env.PORT || 3001, (err, webserver) => {
     if (err) { throw new Error(err); }
   });
 });
+controller.on('outgoing_webhook', (bot, message) => {
+  bot.replyPublic(message, 'Wassssup');
+});
 controller.hears(['@jamesbot', 'help'], ['direct_message', 'direct_mention'], (bot, message) => {
   bot.reply(message, 'I can greet you back if you say hello, hi, or howdy to me and provide Yelp information if you are hungry!');
 });
@@ -99,24 +102,39 @@ controller.hears(['hungry', 'starving', 'food'], ['direct_message', 'direct_ment
               location: `${loc}`,
             }).then((data) => {
               console.log(data);
-              let count = 0;
+              let count = 1;
+              if (data.total === 0) {
+                convo.say('Sorry, there doesnt seem to be anything like that around here');
+                convo.next();
+                convo.completed();
+              }
               convo.say('Here are the top 10 businesses I found: ');
               data.businesses.forEach(business => {
                 // do something with business
-                if (count < 10) {
-                  convo.say(`${business.name} with rating ${business.rating} and ${business.review_count} reviews`);
-                  convo.say(`${business.image_url}`);
+                if (count < 11) {
+                  const yelpAttach = {
+                    text: `${business.name}`,
+                    attachments: [
+                      {
+                        title: `${business.rating} stars and ${business.review_count} reviews`,
+                        color: '#7CD197',
+                        unfurl_media: true,
+                        unfurl_links: true,
+                        image_url: `${business.image_url}`,
+                      },
+                    ],
+                  };
+                  convo.say(yelpAttach);
+                  // convo.say(`${business.name} with ${business.rating} stars and ${business.review_count} reviews`);
+                  // convo.say(`${business.image_url}`);
                   count++;
                 } else {
                   convo.say('I hope I found everything youre looking for!');
-                  convo.say('Goodbye!');
-                  convo.completed();
+                  convo.err(); // Used to throw an error to break out of forEach
                 }
               });
             })
-            .catch((err) => {
-              console.error(err);
-            });
+            .catch((err) => {});
           });
         });
       },
@@ -135,10 +153,26 @@ controller.hears(['hungry', 'starving', 'food'], ['direct_message', 'direct_ment
     }]);
   });
 });
-
-controller.on('message_received', (bot, message) => {
-  bot.reply(message, 'I hear... something...');
+controller.hears(['wake up'], ['direct_message', 'direct_mention', 'mention'], (bot, message) => {
+  const replyWithAttachments = {
+    username: 'Nemu Bot',
+    text: '...5 more minutezzzz...',
+    attachments: [
+      {
+        fallback: 'Is it time to wake up already?',
+        title: 'What do you want?',
+        text: 'Is it time to wake up already?',
+        color: '#7CD197',
+        unfurl_media: true,
+        unfurl_links: true,
+        image_url: 'http://i.giphy.com/b6iVj3IM54Abm.gif',
+      },
+    ],
+    icon_emoji: ':dog:',
+  };
+  bot.reply(message, replyWithAttachments);
 });
+
 controller.hears([/(.*)/], ['direct_message', 'direct_mention', 'mention'], (bot, message) => {
   bot.reply(message, 'Sorry, I dont understand :(');
 });
